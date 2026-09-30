@@ -145,6 +145,22 @@ class TargetClickhouse(SQLTarget):
             description="List of columns to order by. Used for engines that require "
                         "ordering.",
         ),
+        th.Property(
+            "cast_datetime_to",
+            th.StringType,
+            required=False,
+            description="Cast DateTime columns from source to DateTime or DateTime64.",
+            default="DateTime",
+            allowed_values=["DateTime","DateTime64"],
+        ),
+        th.Property(
+            "datetime64_precision",
+            th.IntegerType,
+            required=False,
+            description="Specifies the precision of DateTime64 columns, 3 by default. "
+                        "Works only if 'cast_datetime_to' is set to 'DateTime64'.",
+            default=3,
+        ),
     ).to_dict()
 
     default_sink_class = ClickhouseSink

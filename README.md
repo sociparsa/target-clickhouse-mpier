@@ -4,6 +4,24 @@
 
 Build with the [Meltano Target SDK](https://sdk.meltano.com).
 
+## Changes in this fork
+
+This is a fork of [shaped-ai/target-clickhouse](https://github.com/shaped-ai/target-clickhouse). Changes compared to upstream:
+
+- **`DateTime64` support.** New settings `cast_datetime_to` (`DateTime` by default, or `DateTime64`) and `datetime64_precision` (3 by default) control the ClickHouse type created for `date-time` columns. The default keeps the upstream behaviour (`Nullable(DateTime)`); primary key columns are never wrapped in `Nullable`.
+- **Fractional seconds over the HTTP driver.** The `clickhouse-sqlalchemy` HTTP escaper formats datetimes without fractional seconds, so they were silently truncated. The sink now sends datetimes as `YYYY-MM-DD HH:MM:SS.ffffff` strings when the HTTP driver is used (the native driver is unchanged). Stored precision still depends on the column type, e.g. `DateTime64(3)` keeps milliseconds.
+- **Tests.** Added a `datetime_type` integration test stream and unit tests for the datetime cast settings (`tests/test_datetime_cast.py`).
+
+Example `meltano.yml` configuration:
+
+```yaml
+loaders:
+  - name: target-clickhouse
+    config:
+      cast_datetime_to: DateTime64
+      datetime64_precision: 3
+```
+
 <!--
 
 Developer TODO: Update the below as needed to correctly describe the install procedure. For instance, if you do not have a PyPi repo, or if you want users to directly install from your git repo, you can modify this step as appropriate.
@@ -59,6 +77,8 @@ target-clickhouse --about --format=markdown
 | optimize_after       | False    |       0 | Run 'OPTIMIZE TABLE' after data insert. Useful whentable engine removes duplicate rows.                                                                                                                                                                                                                                 |
 | load_method          | False    | TargetLoadMethods.APPEND_ONLY | The method to use when loading data into the destination. `append-only` will always write all input records whether that records already exists or not. `upsert` will update existing records and insert new records. `overwrite` will delete all existing records and insert all input records.                        |
 | order_by_keys        | False    | None    | The list of columns to order by when loading data into the destination.                                                                                                                                                                                                                                                 |
+| cast_datetime_to     | False    | DateTime | Cast `date-time` columns from the source to `DateTime` or `DateTime64`.                                                                                                                                                                                      |
+| datetime64_precision | False    |       3 | Precision of `DateTime64` columns. Only used when `cast_datetime_to` is `DateTime64`.                                                                                                                                                                       |
 | stream_maps          | False    | None    | Config object for stream maps capability. For more information check out [Stream Maps](https://sdk.meltano.com/en/latest/stream_maps.html).                                                                                                                                                                             |
 | stream_map_config    | False    | None    | User-defined config values to be used within map expressions.                                                                                                                                                                                                                                                           |
 | flattening_enabled   | False    | None    | 'True' to enable schema flattening and automatically expand nested properties.                                                                                                                                                                                                                                          |
