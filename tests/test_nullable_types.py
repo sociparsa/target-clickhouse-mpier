@@ -1,14 +1,16 @@
 """Tests for nullable type handling in to_sql_type."""
 
+from types import SimpleNamespace
+
 from clickhouse_sqlalchemy import types as clickhouse_sqlalchemy_types
 
 from target_clickhouse.connectors import ClickhouseConnector
 
 
-def _to_sql_type(jsonschema_type, is_primary_key=False):
+def _to_sql_type(jsonschema_type, is_primary_key=False, config=None):
     """Call to_sql_type as an unbound method — avoids full connector init."""
     return ClickhouseConnector.to_sql_type(
-        None,
+        SimpleNamespace(config=config or {}),
         jsonschema_type,
         is_primary_key=is_primary_key,
     )

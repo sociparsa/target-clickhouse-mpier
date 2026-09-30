@@ -94,39 +94,46 @@ class ClickhouseConnector(SQLConnector):
             The SQLAlchemy type representation of the data type.
 
         """
+        # Type-mapping Step
         sql_type = th.to_sql_type(jsonschema_type)
         is_primary_key = kwargs.get("is_primary_key", False)
 
-        # Clickhouse does not support the DECIMAL type without providing precision,
-        # so we need to use the FLOAT type.
-        if type(sql_type) == sqlalchemy.types.DECIMAL:
+        ## Clickhouse does not support the DECIMAL type without providing precision,
+        ## so we need to use the FLOAT type.
+        if type(sql_type) is sqlalchemy.types.DECIMAL:
             sql_type = typing.cast(
                 sqlalchemy.types.TypeEngine,
                 sqlalchemy.types.FLOAT(),
             )
-        elif type(sql_type) == sqlalchemy.types.INTEGER:
+        elif type(sql_type) is sqlalchemy.types.INTEGER:
             sql_type = typing.cast(
                 sqlalchemy.types.TypeEngine,
                 clickhouse_sqlalchemy_types.Int64(),
             )
-        elif type(sql_type) == sqlalchemy.types.DATE:
+        elif type(sql_type) is sqlalchemy.types.DATE:
             sql_type = typing.cast(
                 sqlalchemy.types.TypeEngine,
                 clickhouse_sqlalchemy_types.Nullable(clickhouse_sqlalchemy_types.Date32)
                 if not is_primary_key
                 else clickhouse_sqlalchemy_types.Date32,
             )
-        # All date and time types should be flagged as Nullable to allow for NULL value.
+        elif type(sql_type) is sqlalchemy.types.DATETIME:
+            if self.config.get("cast_datetime_to") == "DateTime64":
+                precision = self.config.get("datetime64_precision", 3)
+                sql_type = clickhouse_sqlalchemy_types.DateTime64(precision)
+            if not is_primary_key:
+                sql_type = clickhouse_sqlalchemy_types.Nullable(sql_type)
+
+        # All time types should be flagged as Nullable to allow for NULL value.
         elif (
             type(sql_type)
             in [
                 sqlalchemy.types.TIMESTAMP,
                 sqlalchemy.types.TIME,
-                sqlalchemy.types.DATETIME,
             ]
             and not is_primary_key
         ):
-            sql_type = clickhouse_sqlalchemy_types.Nullable(sql_type)
+                sql_type = clickhouse_sqlalchemy_types.Nullable(sql_type)
 
         # Wrap any type in Nullable if the JSON schema allows null values
         # and it's not already Nullable and not a primary key.

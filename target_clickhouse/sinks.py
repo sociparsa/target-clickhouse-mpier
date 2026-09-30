@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+from datetime import datetime
 from logging import Logger
 from typing import Any, Iterable
 
@@ -77,11 +78,17 @@ class ClickhouseSink(SQLSink):
             True if table exists, False if not, None if unsure or undetectable.
 
         """
+        # The HTTP driver's escaper formats datetimes without fractional seconds,
+        # so send them as strings to keep DateTime64 precision.
+        is_http = self.connector._engine.dialect.driver == "http"  # noqa: SLF001
+
         # Need to convert any records with a dict type to a JSON string.
         for record in records:
             for key, value in record.items():
                 if isinstance(value, (dict, list)):
                     record[key] = json.dumps(value)
+                elif is_http and isinstance(value, datetime):
+                    record[key] = value.strftime("%Y-%m-%d %H:%M:%S.%f")
 
         res = super().bulk_insert_records(full_table_name, schema, records)
 
